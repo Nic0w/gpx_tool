@@ -1,6 +1,10 @@
 extern crate serde;
 extern crate quick_xml;
 
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
+
 use serde::Deserialize;
 use quick_xml::de::{from_str, DeError};
 
@@ -58,30 +62,23 @@ struct Gpx {
 fn main() {
     println!("Hello, world!");
 
-    let mut i = 0u32;
 
-    let ret = loop {
+    let path = Path::new("avenue-verte-london-paris-maisons-laffitte-chaussy.gpx");
+    println!("Opening file '{}'", path.display());
+
+    let mut gpx_file = match File::open(&path) {
     
-        println!("{}", i);
-
-        if i > 50 {
-        
-            break i%12;
-        }
-
-        i += match i%9 {
-        
-            0       => 1,
-            1..=3    => 2,
-            4|6|8   => 3,
-            _       => 4
-        
-        }
+        Err(reason) => panic!("Failed to open file: {}", reason),
+        Ok(file)    => file
     };
 
-    println!("Final value: {}", ret);
 
-    let ys: [i32; 500] = [5; 500];
+    let mut content = String::new();
 
-    println!("{:?} {:?}", ys[0], ys[1]);
+    match gpx_file.read_to_string(&mut content) {
+        
+        Err(reason) => panic!("Failed to read file: {}", reason),
+        Ok(size) => println!("Read {} bytes !", size)
+    };
+
 }
