@@ -9,10 +9,11 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use quick_xml::de::{from_str, DeError};
+use quick_xml::se::to_string;
 
-#[derive(Debug, Deserialize, Copy, Clone)]
+#[derive(Debug, Deserialize, Serialize, Copy, Clone)]
 struct Elevation {
     #[serde(rename = "$value")]
     value: f32
@@ -33,13 +34,13 @@ impl Hash for Elevation {
     }
 }
 
-#[derive(Debug, Deserialize, PartialEq, Hash)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Hash)]
 struct Name {
     #[serde(rename = "$value")]
     value: String
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct TrackPoint {
     lat: f64,
     lon: f64,
@@ -80,13 +81,13 @@ impl Hash for TrackPoint {
     }
 }
 
-#[derive(Debug, Deserialize, Hash)]
+#[derive(Debug, Deserialize, Serialize, Hash)]
 struct TrackSegment {
     #[serde(rename = "trkpt", default)]
     points: Vec<TrackPoint>
 }
 
-#[derive(Debug, Deserialize, Hash)]
+#[derive(Debug, Deserialize, Serialize, Hash)]
 struct Track {
    name: Name,
 
@@ -94,12 +95,12 @@ struct Track {
    segments: Vec<TrackSegment>
 }
 
-#[derive(Debug, Deserialize, PartialEq, Hash)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Hash)]
 struct Metadata {
     name: Name
 }
 
-#[derive(Debug, Deserialize, Hash)]
+#[derive(Debug, Deserialize, Serialize, Hash)]
 struct Gpx {
     creator: String,
     version: String,
@@ -162,4 +163,42 @@ fn main() {
 
     println!("{} points in total, kept {}.", point_count, final_points.len());
 
+    /*let simple_vec = |elt|{
+        let vec = Vec::new();
+        vec.push(elt);
+        vec
+    };*/
+
+
+    /*let segment = simple_vec(TrackSegment{
+        points: final_points.clone()
+    });
+
+    let track = simple_vec(Track {
+        name: Name { value: "TestSeg".to_string() },
+        segments: segment
+    })*/ 
+
+    let cleanedup_gpx = Gpx {
+        creator: "nic0w".to_string(),
+        version: "1.1".to_string(),
+
+        metadata: Metadata {
+            name: Name { value: "Test".to_string() }
+        },
+
+        tracks: (|track| { let mut vec = Vec::new(); vec.push(track); vec})(Track {
+            name: Name { value: "TestSeg".to_string() },
+            segments: (|seg| { let mut vec = Vec::new(); vec.push(seg); vec})(TrackSegment{
+                points: final_points.clone()
+            })
+        })
+    };
+
+    let result =  match to_string(&cleanedup_gpx) {
+        Err(reason) => panic!("Failed to serialized: {}", reason),
+        Ok(content) => content
+    };
+
+    println!("{}", result);
 }
