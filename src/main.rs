@@ -24,7 +24,7 @@ mod lookup;
 use crate::gpx::*;
 use crate::distance::distance;
 use crate::tsp::solve_tsp;
-use crate::lookup::{directional_lookup, CardinalPoint};
+use crate::lookup::{directional_lookup, coordinates_lookup, CardinalPoint};
 
 struct ParsedArgs {
     file: String,
@@ -60,23 +60,7 @@ fn main() {
 
     println!("Hello, world!");  
 
-    let args: Vec<String> = env::args().collect();
-
-    let config: ParsedArgs = if args.len() < 3 {
-    
-        panic!("missing arguments !");
-    }
-    else {
-    
-        let point_str: Vec<&str> = args[2].split(",").collect();
-        
-        ParsedArgs {
-            file: args[1].to_string(),
-            start: (point_str[0].parse().unwrap(), point_str[1].parse().unwrap())
-        }
-    };
-
-    let path = Path::new(&config.file);
+    let path = Path::new(args.value_of("file").unwrap());
     println!("Opening file '{}'", path.display());
 
     let mut gpx_file = match File::open(&path) {    
@@ -123,18 +107,33 @@ fn main() {
 
     //(48.947646f64, 2.153013f64)
 
-    let ind = directional_lookup(CardinalPoint::South, &final_points);
 
-    println!("{},{} {},{}", config.start.0, config.start.1, final_points[ind].0, final_points[ind].1);
+    let startpoint_index = match args.value_of("cardinal-point") {
+        Some(cardinal_point_str) => {
+            let cardinal_point: CardinalPoint = cardinal_point_str.parse().unwrap();
 
-    let start_point = match config.start {
-        (f64::NAN, f64::NAN) => final_points[ind],
-        _ => final_points[ind]
+            directional_lookup(cardinal_point, &final_points)
+        },
+
+        _ => match args.value_of("start-point") {
+            Some(point_str) => {
+            
+                let coordinates: Vec<&str> = point_str.split(",").collect();
+                
+                let point = (coordinates[0].parse().unwrap(), coordinates[1].parse().unwrap());
+
+                coordinates_lookup(point, &final_points)
+            },
+            
+            _ => { println!("Defaulting to first point as start point!"); 0usize }
+        }
     };
 
-    println!("Starting with ({}, {}) : {:?}", start_point.0, start_point.1,CardinalPoint::South );
+    let start_point = final_points[startpoint_index];
 
-    let mut ordered = solve_tsp(start_point, final_points);
+    println!("Starting with ({}, {})", start_point.0, start_point.1);
+
+    let mut ordered = solve_tsp(startpoint_index, final_points);
 
     println!("We still have {} points after TSP solver.", ordered.len());
 
