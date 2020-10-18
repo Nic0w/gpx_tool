@@ -36,19 +36,11 @@ pub fn solve_tsp(start: (f64, f64),points: Vec<(f64, f64)>) -> Vec<(f64, f64)> {
     let mut min = (0usize, f64::MAX);
     while path.len() < points.len() {
 
-        //println!("### LOOPING AGAIN {} ###", path.len());
         for (i, coords) in points_copy.iter().enumerate() {
       
-            //println!("\t##LLAALA {}", i);
-            //println!("coords ({}, {}); current ({}, {});", coords.0, coords.1, current.0, current.1);
-            /*if same(coords, &current.1) { 
-                println!("\t\tJump!");
-                continue; 
-            }*/
-
             min = match (i, distance(coords, &current)) {
-                (i, d) if min.1 > d => { /*println!("\t\ti {} d {}", i, d);*/ (i, d)},
-                _ => { /*println!("\t\tNo new min.");*/ min}
+                (i, d) if min.1 > d => (i, d),
+                _ => min
             };
         }
  
