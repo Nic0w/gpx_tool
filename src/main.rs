@@ -9,13 +9,18 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use quick_xml::de::{from_str, DeError};
-use quick_xml::se::to_string;
+//use quick_xml::se::to_string;
 
-#[derive(Debug, Deserialize, Serialize, Copy, Clone)]
+use simple_xml_serialize::XMLElement;
+use simple_xml_serialize_macro::xml_element;
+
+#[xml_element("ele")]
+#[derive(Debug, Deserialize, Copy, Clone)]
 struct Elevation {
     #[serde(rename = "$value")]
+    #[sxs_type_text]
     value: f32
 }
 
@@ -34,18 +39,25 @@ impl Hash for Elevation {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Hash)]
+#[xml_element("name")]
+#[derive(Debug, Deserialize, PartialEq, Hash)]
 struct Name {
     #[serde(rename = "$value")]
+    #[sxs_type_text]
     value: String
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[xml_element("trkpt")]
+#[derive(Debug, Deserialize)]
 struct TrackPoint {
+    #[sxs_type_attr]
     lat: f64,
+
+    #[sxs_type_attr]
     lon: f64,
 
     #[serde(rename = "ele", default)]
+    #[sxs_type_multi_element(rename="ele")]
     elevations: Vec<Elevation>
 }
 
@@ -81,35 +93,50 @@ impl Hash for TrackPoint {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Hash)]
+#[xml_element("trkseg")]
+#[derive(Debug, Deserialize, Hash)]
 struct TrackSegment {
     #[serde(rename = "trkpt", default)]
+    #[sxs_type_multi_element(rename="trkpt")]
     points: Vec<TrackPoint>
 }
 
-#[derive(Debug, Deserialize, Serialize, Hash)]
+#[xml_element("trk")]
+#[derive(Debug, Deserialize, Hash)]
 struct Track {
+   #[sxs_type_element]
    name: Name,
 
    #[serde(rename = "trkseg", default)]
+   #[sxs_type_multi_element(rename="trkseg")]
    segments: Vec<TrackSegment>
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Hash)]
+#[xml_element("metadata")]
+#[derive(Debug, Deserialize, PartialEq, Hash)]
 struct Metadata {
+    #[sxs_type_element]
     name: Name
 }
 
-#[derive(Debug, Deserialize, Serialize, Hash)]
+#[xml_element("gpx")]
+#[derive(Debug, Deserialize, Hash)]
 struct Gpx {
+    #[sxs_type_attr]
     creator: String,
+
+    #[sxs_type_attr]
     version: String,
 
+    #[sxs_type_element]
     metadata: Metadata,
     
     #[serde(rename = "trk", default)]
+    #[sxs_type_multi_element(rename="trk")]
     tracks: Vec<Track>
 }
+
+
 
 fn main() {
     
@@ -187,18 +214,20 @@ fn main() {
             name: Name { value: "Test".to_string() }
         },
 
-        tracks: (|track| { let mut vec = Vec::new(); vec.push(track); vec})(Track {
+        tracks: vec![Track {
             name: Name { value: "TestSeg".to_string() },
-            segments: (|seg| { let mut vec = Vec::new(); vec.push(seg); vec})(TrackSegment{
+            segments: vec![TrackSegment{
                 points: final_points.clone()
-            })
-        })
+            }]
+        }]
     };
 
-    let result =  match to_string(&cleanedup_gpx) {
+    /*let result =  match to_string(&cleanedup_gpx) {
         Err(reason) => panic!("Failed to serialized: {}", reason),
         Ok(content) => content
-    };
+    };*/
 
-    println!("{}", result);
+    let my_point_xml = XMLElement::from(cleanedup_gpx);
+
+    println!("{}", my_point_xml.to_string_pretty("\n", "  "));
 }

@@ -8,4 +8,6 @@ edition = "2018"
 
 [dependencies]
 serde = { version = "1.0", features = [ "derive" ] }
-quick-xml = { version = "0.17", features = [ "serialize" ] }
+quick-xml = { version = "0.20", features = [ "serialize" ] }
+simple_xml_serialize = "0.2.3"
+simple_xml_serialize_macro = "0.2.1"
