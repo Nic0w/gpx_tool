@@ -1,6 +1,8 @@
 extern crate serde;
 extern crate quick_xml;
 
+use std::f64::consts::PI;
+
 use std::hash::{Hash, Hasher};
 
 use std::collections::HashSet;
@@ -136,7 +138,36 @@ struct Gpx {
     tracks: Vec<Track>
 }
 
+const EARTH_RADIUS: f64 = 6371e3;
 
+fn distance(coords_1: (f64, f64), coords_2: (f64, f64)) -> f64 {
+
+    let (lat1, lon1) = coords_1;
+    let (lat2, lon2) = coords_2;
+
+//  println!("Computing distance between ({}, {}) and ({}, {}).", lat1, lon1, lat2, lon2);
+
+    let to_radians = |x| x * (PI/180.0);
+
+    let phi1 = to_radians(lat1);
+    let phi2 = to_radians(lat2);
+
+    //let d_phi = mul_by_pi_frac_180(if lat1 > lat2 {lat1-lat2} else {lat2-lat1});
+    //let d_del = mul_by_pi_frac_180(if lon1 > lon2 {lon1-lon2} else {lon2-lon1});
+
+    let d_phi = to_radians(lat2-lat1);
+    let d_del = to_radians(lon2-lon1);
+
+//  println!("{} {} {} {}", phi1, phi2, d_phi, d_del);
+
+    let a = (d_phi/2.0).sin().powi(2) + phi1.cos()*phi2.cos()*(d_del/2.0).sin().powi(2);
+
+//  println!("a {}", a);
+
+    let c = a.sqrt().atan2((1.0-a).sqrt()) * 2.0;
+
+    EARTH_RADIUS * c
+}
 
 fn main() {
     
@@ -170,6 +201,9 @@ fn main() {
     let mut unique_points: HashSet<TrackPoint> = HashSet::new();
     let mut final_points: Vec<TrackPoint> = Vec::new();
     let mut point_count = 0usize;
+    let mut previous = (std::f64::NAN, std::f64::NAN);
+    let mut avg_dist: f64 = 50.0; 
+    let mut outlier: bool = false;
     for (i, track) in gpx.tracks.iter().enumerate() {
         println!("{} segments in track {}.", track.segments.len(), i);
         
@@ -177,10 +211,26 @@ fn main() {
             println!("\t{} points in segment.", segment.points.len());
 
             for point in segment.points.iter() {
-            
-                if unique_points.insert(point.clone()) {
+           
+                let current = (point.lat, point.lon);
+                let dist = distance(previous, current);
+                previous = current;
+
+               // println!("sqrt {}", dist.sqrt());
+                if dist > 200.0 { println!("outlier? {}", dist); outlier=true; }
+
+                if !dist.is_nan() && !outlier {  
+                  //  println!("dist {} avg {} pc {}", dist, avg_dist, point_count);
+                    avg_dist = (avg_dist + dist) / 2.0;
+                }
+
+                //println!("\t\tDistance with previous point: {} meters; avg={}", dist, avg_dist);
+
+                if unique_points.insert(point.clone()) && !outlier {
                     final_points.push(point.clone());
                 }
+
+                outlier=false;
             }
         
         }
@@ -189,22 +239,6 @@ fn main() {
     }
 
     println!("{} points in total, kept {}.", point_count, final_points.len());
-
-    /*let simple_vec = |elt|{
-        let vec = Vec::new();
-        vec.push(elt);
-        vec
-    };*/
-
-
-    /*let segment = simple_vec(TrackSegment{
-        points: final_points.clone()
-    });
-
-    let track = simple_vec(Track {
-        name: Name { value: "TestSeg".to_string() },
-        segments: segment
-    })*/ 
 
     let cleanedup_gpx = Gpx {
         creator: "nic0w".to_string(),
@@ -222,12 +256,7 @@ fn main() {
         }]
     };
 
-    /*let result =  match to_string(&cleanedup_gpx) {
-        Err(reason) => panic!("Failed to serialized: {}", reason),
-        Ok(content) => content
-    };*/
+    let cleanedup_xml = XMLElement::from(cleanedup_gpx);
 
-    let my_point_xml = XMLElement::from(cleanedup_gpx);
-
-    println!("{}", my_point_xml.to_string_pretty("\n", "  "));
+    println!("{}", cleanedup_xml.to_string_pretty("\n", "  "));
 }
