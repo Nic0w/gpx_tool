@@ -77,11 +77,16 @@ fn main() {
 
     println!("{} points in total, kept {}.", point_count, final_points.len());
 
-    let ordered = solve_tsp(final_points);
+    let mut ordered = solve_tsp((48.947646f64, 2.153013f64), final_points);
 
     println!("We still have {} points after TSP solver.", ordered.len());
 
     let mut final_ordered: Vec<TrackPoint> = Vec::new();
+
+    println!("{} {}", ordered[ordered.len()-1].0, ordered[ordered.len()-1].1);
+   
+    ordered.pop();
+    ordered.pop();
 
     for point in ordered.iter() {
         
