@@ -13,9 +13,11 @@ use quick_xml::de::{from_str, DeError};
 
 mod gpx;
 mod distance;
+mod tsp;
 
 use crate::gpx::*;
 use crate::distance::distance;
+use crate::tsp::solve_tsp;
 
 fn main() {
     
@@ -47,7 +49,7 @@ fn main() {
     println!("Parsed {} tracks !", gpx.tracks.len());
 
     let mut unique_points: HashSet<TrackPoint> = HashSet::new();
-    let mut final_points: Vec<TrackPoint> = Vec::new();
+    let mut final_points: Vec<(f64, f64)> = Vec::new();
     let mut point_count = 0usize;
     let mut previous = (std::f64::NAN, std::f64::NAN);
     let mut avg_dist: f64 = 50.0; 
@@ -60,12 +62,12 @@ fn main() {
 
             for point in segment.points.iter() {
            
-                let current = (point.lat, point.lon);
-                let dist = distance(previous, current);
-                previous = current;
+                /*let current = (point.lat, point.lon);
+                let dist = distance(&previous, &current);
+                previous = current;*/
 
                 if unique_points.insert(point.clone()) {
-                    final_points.push(point.clone());
+                    final_points.push((point.lat, point.lon));
                 }
             }
         }
@@ -74,6 +76,22 @@ fn main() {
     }
 
     println!("{} points in total, kept {}.", point_count, final_points.len());
+
+    let ordered = solve_tsp(final_points);
+
+    println!("We still have {} points after TSP solver.", ordered.len());
+
+    let mut final_ordered: Vec<TrackPoint> = Vec::new();
+
+    for point in ordered.iter() {
+        
+        final_ordered.push(TrackPoint {
+            lat: point.0,
+            lon: point.1,
+
+            elevations: vec![]
+        });
+    }
 
     let cleanedup_gpx = Gpx {
         creator: "nic0w".to_string(),
@@ -86,7 +104,7 @@ fn main() {
         tracks: vec![Track {
             name: Name { value: "TestSeg".to_string() },
             segments: vec![TrackSegment{
-                points: final_points.clone()
+                points: final_ordered.clone()
             }]
         }]
     };

@@ -6,10 +6,10 @@ const EARTH_RADIUS: f64 = 6371e3;
 Formula from: https://www.movable-type.co.uk/scripts/latlong.html
 
 */
-pub fn distance(coords_1: (f64, f64), coords_2: (f64, f64)) -> f64 {
+pub fn distance(coords_1: &(f64, f64), coords_2: &(f64, f64)) -> f64 {
 
-    let (lat1, lon1) = coords_1;
-    let (lat2, lon2) = coords_2;
+    let (lat1, lon1) = *coords_1;
+    let (lat2, lon2) = *coords_2;
 
     let to_radians = |x| x * (PI/180.0);
 
