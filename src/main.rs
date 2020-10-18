@@ -1,8 +1,6 @@
 extern crate serde;
 extern crate quick_xml;
 
-use std::f64::consts::PI;
-
 use std::collections::HashSet;
 
 use std::fs::File;
@@ -13,40 +11,11 @@ use simple_xml_serialize::XMLElement;
 
 use quick_xml::de::{from_str, DeError};
 
-
 mod gpx;
+mod distance;
+
 use crate::gpx::*;
-
-const EARTH_RADIUS: f64 = 6371e3;
-
-fn distance(coords_1: (f64, f64), coords_2: (f64, f64)) -> f64 {
-
-    let (lat1, lon1) = coords_1;
-    let (lat2, lon2) = coords_2;
-
-//  println!("Computing distance between ({}, {}) and ({}, {}).", lat1, lon1, lat2, lon2);
-
-    let to_radians = |x| x * (PI/180.0);
-
-    let phi1 = to_radians(lat1);
-    let phi2 = to_radians(lat2);
-
-    //let d_phi = mul_by_pi_frac_180(if lat1 > lat2 {lat1-lat2} else {lat2-lat1});
-    //let d_del = mul_by_pi_frac_180(if lon1 > lon2 {lon1-lon2} else {lon2-lon1});
-
-    let d_phi = to_radians(lat2-lat1);
-    let d_del = to_radians(lon2-lon1);
-
-//  println!("{} {} {} {}", phi1, phi2, d_phi, d_del);
-
-    let a = (d_phi/2.0).sin().powi(2) + phi1.cos()*phi2.cos()*(d_del/2.0).sin().powi(2);
-
-//  println!("a {}", a);
-
-    let c = a.sqrt().atan2((1.0-a).sqrt()) * 2.0;
-
-    EARTH_RADIUS * c
-}
+use crate::distance::distance;
 
 fn main() {
     
