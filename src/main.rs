@@ -3,140 +3,19 @@ extern crate quick_xml;
 
 use std::f64::consts::PI;
 
-use std::hash::{Hash, Hasher};
-
 use std::collections::HashSet;
 
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
-use serde::Deserialize;
-use quick_xml::de::{from_str, DeError};
-//use quick_xml::se::to_string;
-
 use simple_xml_serialize::XMLElement;
-use simple_xml_serialize_macro::xml_element;
 
-#[xml_element("ele")]
-#[derive(Debug, Deserialize, Copy, Clone)]
-struct Elevation {
-    #[serde(rename = "$value")]
-    #[sxs_type_text]
-    value: f32
-}
+use quick_xml::de::{from_str, DeError};
 
-impl PartialEq for Elevation {
-    fn eq(&self, other: &Self) -> bool {
 
-        self.value.to_bits() == other.value.to_bits()
-    }
-}
-impl Eq for Elevation {}
-
-impl Hash for Elevation {
-
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.value.to_bits().hash(state);
-    }
-}
-
-#[xml_element("name")]
-#[derive(Debug, Deserialize, PartialEq, Hash)]
-struct Name {
-    #[serde(rename = "$value")]
-    #[sxs_type_text]
-    value: String
-}
-
-#[xml_element("trkpt")]
-#[derive(Debug, Deserialize)]
-struct TrackPoint {
-    #[sxs_type_attr]
-    lat: f64,
-
-    #[sxs_type_attr]
-    lon: f64,
-
-    #[serde(rename = "ele", default)]
-    #[sxs_type_multi_element(rename="ele")]
-    elevations: Vec<Elevation>
-}
-
-impl Clone for TrackPoint {
-
-    fn clone(&self) -> TrackPoint {
-        TrackPoint {
-            lat: self.lat,
-            lon: self.lon,
-            elevations: self.elevations.clone()
-        }
-    }
-}
-//impl Copy for TrackPoint {}
-
-impl PartialEq for TrackPoint {
-    fn eq(&self, other: &Self) -> bool {
-        
-        self.lat.to_bits() == other.lat.to_bits() &&
-            self.lon.to_bits() == other.lon.to_bits() /*&&
-                self.elevations[0].eq(&other.elevations[0])*/
-    }
-}
-impl Eq for TrackPoint {}
-
-impl Hash for TrackPoint {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-    
-        self.lat.to_bits().hash(state);
-        self.lon.to_bits().hash(state);
-
-        //self.elevations[0].hash(state);
-    }
-}
-
-#[xml_element("trkseg")]
-#[derive(Debug, Deserialize, Hash)]
-struct TrackSegment {
-    #[serde(rename = "trkpt", default)]
-    #[sxs_type_multi_element(rename="trkpt")]
-    points: Vec<TrackPoint>
-}
-
-#[xml_element("trk")]
-#[derive(Debug, Deserialize, Hash)]
-struct Track {
-   #[sxs_type_element]
-   name: Name,
-
-   #[serde(rename = "trkseg", default)]
-   #[sxs_type_multi_element(rename="trkseg")]
-   segments: Vec<TrackSegment>
-}
-
-#[xml_element("metadata")]
-#[derive(Debug, Deserialize, PartialEq, Hash)]
-struct Metadata {
-    #[sxs_type_element]
-    name: Name
-}
-
-#[xml_element("gpx")]
-#[derive(Debug, Deserialize, Hash)]
-struct Gpx {
-    #[sxs_type_attr]
-    creator: String,
-
-    #[sxs_type_attr]
-    version: String,
-
-    #[sxs_type_element]
-    metadata: Metadata,
-    
-    #[serde(rename = "trk", default)]
-    #[sxs_type_multi_element(rename="trk")]
-    tracks: Vec<Track>
-}
+mod gpx;
+use crate::gpx::*;
 
 const EARTH_RADIUS: f64 = 6371e3;
 
@@ -205,10 +84,10 @@ fn main() {
     let mut avg_dist: f64 = 50.0; 
     let mut outlier: bool = false;
     for (i, track) in gpx.tracks.iter().enumerate() {
-        println!("{} segments in track {}.", track.segments.len(), i);
+        //println!("{} segments in track {}.", track.segments.len(), i);
         
         for segment in track.segments.iter() { 
-            println!("\t{} points in segment.", segment.points.len());
+            //println!("\t{} points in segment.", segment.points.len());
 
             for point in segment.points.iter() {
            
@@ -216,23 +95,10 @@ fn main() {
                 let dist = distance(previous, current);
                 previous = current;
 
-               // println!("sqrt {}", dist.sqrt());
-                if dist > 200.0 { println!("outlier? {}", dist); outlier=true; }
-
-                if !dist.is_nan() && !outlier {  
-                  //  println!("dist {} avg {} pc {}", dist, avg_dist, point_count);
-                    avg_dist = (avg_dist + dist) / 2.0;
-                }
-
-                //println!("\t\tDistance with previous point: {} meters; avg={}", dist, avg_dist);
-
-                if unique_points.insert(point.clone()) && !outlier {
+                if unique_points.insert(point.clone()) {
                     final_points.push(point.clone());
                 }
-
-                outlier=false;
             }
-        
         }
 
         point_count += track.segments[0].points.len()
