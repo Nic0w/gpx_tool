@@ -2,8 +2,6 @@ extern crate serde;
 extern crate quick_xml;
 extern crate clap;
 
-use std::env;
-
 use std::collections::HashSet;
 
 use std::fs::File;
@@ -12,7 +10,7 @@ use std::path::Path;
 
 use simple_xml_serialize::XMLElement;
 
-use quick_xml::de::{from_str, DeError};
+use quick_xml::de::from_str;
 
 use clap::{App, Arg, SubCommand};
 
@@ -22,14 +20,8 @@ mod tsp;
 mod lookup;
 
 use crate::gpx::*;
-use crate::distance::distance;
 use crate::tsp::solve_tsp;
 use crate::lookup::{directional_lookup, coordinates_lookup, CardinalPoint};
-
-struct ParsedArgs {
-    file: String,
-    start: (f64, f64)
-}
 
 fn main() {
     
@@ -40,7 +32,7 @@ fn main() {
         arg(Arg::with_name("file").
             short("f").
             long("file").
-            value_name("FILE").
+            value_name("./path/to/file.gpx").
             help("File to fix").
             takes_value(true).
             required(true)).
@@ -55,6 +47,12 @@ fn main() {
             long("cardinal").
             value_name("North|South|East|West").
             help("When reconstructing a broken track, the algorithm will look for the easternmost, westernmost, southernmost, northenmost point to use as a starting point").
+            takes_value(true)).
+        arg(Arg::with_name("truncate").
+            short("t").
+            long("truncate").
+            value_name("number").
+            help("Will remove number of points from the end of the repaired track. Can help with outliers.").
             takes_value(true)).
         get_matches();
 
@@ -88,7 +86,7 @@ fn main() {
     let mut unique_points: HashSet<TrackPoint> = HashSet::new();
     let mut final_points: Vec<(f64, f64)> = Vec::new();
     let mut point_count = 0usize;
-    for (i, track) in gpx.tracks.iter().enumerate() {
+    for track in gpx.tracks.iter() {
         
         for segment in track.segments.iter() { 
 
@@ -140,9 +138,15 @@ fn main() {
     let mut final_ordered: Vec<TrackPoint> = Vec::new();
 
     println!("{} {}", ordered[ordered.len()-1].0, ordered[ordered.len()-1].1);
-   
-    ordered.pop();
-    ordered.pop();
+  
+    let truncate: usize = match args.value_of("truncate") {
+        Some(n) => n.parse().unwrap(),
+        _       => 0usize
+    };
+
+    for _i in 0..truncate {
+        ordered.pop();
+    }
 
     for point in ordered.iter() {
         
@@ -171,6 +175,17 @@ fn main() {
     };
 
     let cleanedup_xml = XMLElement::from(cleanedup_gpx);
+
+    let output = Path::new("output.gpx");
+
+    let mut out_file = match File::create(output) {
+        
+        Ok(file) => file,
+        Err(reason) => panic!("Failed to open a file for writing."),
+    
+    };
+
+    out_file.write_all(cleanedup_xml.to_string_pretty("\n", "  ").as_bytes());
 
     println!("{}", cleanedup_xml.to_string_pretty("\n", "  "));
 }
