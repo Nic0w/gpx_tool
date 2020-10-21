@@ -1,5 +1,5 @@
 [package]
-name = "test_rust"
+name = "gpx_tool"
 version = "0.1.0"
 authors = ["Nic0w <nico.broquet@gmail.com>"]
 edition = "2018"
