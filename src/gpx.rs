@@ -1,6 +1,9 @@
 extern crate serde;
 extern crate quick_xml;
 
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
 use std::hash::{Hash, Hasher};
 
 use serde::Deserialize;
@@ -67,7 +70,7 @@ impl Clone for TrackPoint {
 
 impl PartialEq for TrackPoint {
     fn eq(&self, other: &Self) -> bool {
-        
+
         self.lat.to_bits() == other.lat.to_bits() &&
             self.lon.to_bits() == other.lon.to_bits() /*&&
                 self.elevations[0].eq(&other.elevations[0])*/
@@ -77,7 +80,7 @@ impl Eq for TrackPoint {}
 
 impl Hash for TrackPoint {
     fn hash<H: Hasher>(&self, state: &mut H) {
-    
+
         self.lat.to_bits().hash(state);
         self.lon.to_bits().hash(state);
 
@@ -122,8 +125,30 @@ pub struct Gpx {
 
     #[sxs_type_element]
     pub metadata: Metadata,
-    
+
     #[serde(rename = "trk", default)]
     #[sxs_type_multi_element(rename="trk")]
     pub tracks: Vec<Track>
+}
+
+pub fn parse_gpx(path: &Path) -> Gpx {
+
+    match File::open(&path) {
+        Err(reason) => panic!("Failed to open file: {}", reason),
+        Ok(mut gpx_file)    => {
+
+            let mut content = String::new();
+
+            match gpx_file.read_to_string(&mut content) {
+                Err(reason) => panic!("Failed to read file: {}", reason),
+                Ok(size) => println!("Read {} bytes !", size)
+            };
+
+            match quick_xml::de::from_str(&content) {
+
+                Err(reason) => panic!("Failed to parse data: {}", reason),
+                Ok(data) => data
+            }
+        }
+    }
 }

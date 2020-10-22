@@ -2,108 +2,64 @@ extern crate serde;
 extern crate quick_xml;
 extern crate clap;
 
-use std::collections::HashSet;
+use clap::{App, Arg};
 
-use std::fs::File;
-use std::io::prelude::*;
-use std::path::Path;
-
-use simple_xml_serialize::XMLElement;
-
-use quick_xml::de::from_str;
-
-use clap::{App, Arg, SubCommand};
-
-mod gpx;
-mod distance;
-mod tsp;
+mod repair;
 mod lookup;
+mod gpx;
+mod tsp;
+mod distance;
 
-use crate::gpx::*;
-use crate::tsp::solve_tsp;
-use crate::lookup::{directional_lookup, coordinates_lookup, CardinalPoint};
+use crate::repair::repair;
 
 fn main() {
-    
-    let args = App::new("GPX Parser").
+
+    let app = App::new("GPX Parser").
         version("1.0").
         author("nic0w").
-        about("Fixes broken gpx files").
-        arg(Arg::with_name("file").
-            short("f").
-            long("file").
-            value_name("./path/to/file.gpx").
-            help("File to fix").
-            takes_value(true).
-            required(true)).
-        arg(Arg::with_name("start-point").
-            short("s").
-            long("start").
-            value_name("lat,lon").
-            help("When reconstructing a broken track, this is where the track will begin").
-            takes_value(true)).
-        arg(Arg::with_name("cardinal-point").
-            short("c").
-            long("cardinal").
-            value_name("North|South|East|West").
-            help("When reconstructing a broken track, the algorithm will look for the easternmost, westernmost, southernmost, northenmost point to use as a starting point").
-            takes_value(true)).
-        arg(Arg::with_name("truncate").
-            short("t").
-            long("truncate").
-            value_name("number").
-            help("Will remove number of points from the end of the repaired track. Can help with outliers.").
-            takes_value(true)).
+        about("Fixes or combines (broken) gpx files").
+        subcommand(App::new("repair").
+            about("Repair a gpx file").
+            arg(Arg::with_name("start-point").
+                short("s").
+                long("start").
+                value_name("lat,lon").
+                help("When reconstructing a broken track, this is where the track will begin").
+                takes_value(true)).
+            arg(Arg::with_name("cardinal-point").
+                short("c").
+                long("cardinal").
+                value_name("North|South|East|West").
+                help("When reconstructing a broken track, the algorithm will look for the easternmost, westernmost, southernmost, northenmost point to use as a starting point").
+                takes_value(true)).
+            arg(Arg::with_name("truncate").
+                short("t").
+                long("truncate").
+                value_name("number").
+                help("Will remove number of points from the end of the repaired track. Can help with outliers.").
+                takes_value(true)).
+            arg(Arg::with_name("file").
+                value_name("./path/to/file.gpx").
+                help("File to fix").
+                takes_value(true).
+                required(true))).
         get_matches();
 
-    println!("Hello, world!");  
+    println!("Hello, world!");
 
-    let path = Path::new(args.value_of("file").unwrap());
-    println!("Opening file '{}'", path.display());
+    match app.subcommand() {
 
-    let mut gpx_file = match File::open(&path) {    
-        Err(reason) => panic!("Failed to open file: {}", reason),
-        Ok(file)    => file
-    };
-
-    let mut content = String::new();
-
-    match gpx_file.read_to_string(&mut content) {
-        
-        Err(reason) => panic!("Failed to read file: {}", reason),
-        Ok(size) => println!("Read {} bytes !", size)
-    };
-
-    let gpx: Gpx = match from_str(&content) {
-    
-        Err(reason) => panic!("Failed to parse data: {}", reason),
-        Ok(data) => data
-    };
-
-    println!("File by '{}', version {}", gpx.creator, gpx.version);
-    println!("Parsed {} tracks !", gpx.tracks.len());
-
-    let mut unique_points: HashSet<TrackPoint> = HashSet::new();
-    let mut final_points: Vec<(f64, f64)> = Vec::new();
-    let mut point_count = 0usize;
-    for track in gpx.tracks.iter() {
-        
-        for segment in track.segments.iter() { 
-
-            for point in segment.points.iter() {
-           
-                if unique_points.insert(point.clone()) {
-                    final_points.push((point.lat, point.lon));
-                }
-            }
+        ("repair", Some(args)) => {
+            repair(
+                args.value_of("file"),
+                args.value_of("cardinal-point"),
+                args.value_of("start-point")
+            );
         }
+        _ => {}
+    };
 
-        point_count += track.segments[0].points.len()
-    }
-
-    println!("{} points in total, kept {}.", point_count, final_points.len());
-
-    //(48.947646f64, 2.153013f64)
+    /*//(48.947646f64, 2.153013f64)
 
 
     let startpoint_index = match args.value_of("cardinal-point") {
@@ -115,14 +71,14 @@ fn main() {
 
         _ => match args.value_of("start-point") {
             Some(point_str) => {
-            
+
                 let coordinates: Vec<&str> = point_str.split(",").collect();
-                
+
                 let point = (coordinates[0].parse().unwrap(), coordinates[1].parse().unwrap());
 
                 coordinates_lookup(point, &final_points)
             },
-            
+
             _ => { println!("Defaulting to first point as start point!"); 0usize }
         }
     };
@@ -138,7 +94,7 @@ fn main() {
     let mut final_ordered: Vec<TrackPoint> = Vec::new();
 
     println!("{} {}", ordered[ordered.len()-1].0, ordered[ordered.len()-1].1);
-  
+
     let truncate: usize = match args.value_of("truncate") {
         Some(n) => n.parse().unwrap(),
         _       => 0usize
@@ -149,7 +105,7 @@ fn main() {
     }
 
     for point in ordered.iter() {
-        
+
         final_ordered.push(TrackPoint {
             lat: point.0,
             lon: point.1,
@@ -179,13 +135,13 @@ fn main() {
     let output = Path::new("output.gpx");
 
     let mut out_file = match File::create(output) {
-        
+
         Ok(file) => file,
         Err(reason) => panic!("Failed to open a file for writing."),
-    
+
     };
 
     out_file.write_all(cleanedup_xml.to_string_pretty("\n", "  ").as_bytes());
 
-    println!("{}", cleanedup_xml.to_string_pretty("\n", "  "));
+    println!("{}", cleanedup_xml.to_string_pretty("\n", "  "));*/
 }
