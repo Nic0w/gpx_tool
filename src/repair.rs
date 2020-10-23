@@ -1,12 +1,12 @@
 use std::path::Path;
 use std::collections::HashSet;
 
-use crate::gpx::{Track, TrackPoint, parse_gpx};
+use crate::gpx::{Track, TrackPoint, parse_gpx, to_gpx};
 use crate::lookup::{directional_lookup, coordinates_lookup, CardinalPoint};
 use crate::tsp::solve_tsp;
 use crate::distance::distance;
 
-pub fn repair(file: Option<&str>, cardinal_point: Option<&str>, start_point: Option<&str>) {
+pub fn repair(file: Option<&str>, cardinal_point: Option<&str>, start_point: Option<&str>, truncate: Option<&str>) {
 
     let path = Path::new(file.unwrap());
 
@@ -21,7 +21,7 @@ pub fn repair(file: Option<&str>, cardinal_point: Option<&str>, start_point: Opt
 
     println!("{} points in total, kept {}.", total_points, unique_points.len());
 
-    let startpoint_index = select_startpoint(cardinal_point, start_point, &unique_points);
+    let startpoint_index = select_startpoint(cardinal_point, start_point, &unique_points).unwrap_or_default();
 
     let start_point = unique_points[startpoint_index];
 
@@ -29,7 +29,26 @@ pub fn repair(file: Option<&str>, cardinal_point: Option<&str>, start_point: Opt
 
     let mut ordered_points = solve_tsp(startpoint_index, &unique_points);
 
-    let mut previous = ordered_points[0];
+    if let Some(n) = truncate {
+        match n.parse::<usize>() {
+            Ok(n) => pop_points(&mut ordered_points, n),
+            _ => panic!("Failed to parse truncate option.")
+        };
+    }
+
+    to_gpx(&ordered_points, None, None, None, None);
+}
+
+fn pop_points(points: &mut std::vec::Vec<(f64, f64)>, nb: usize) {
+
+    for _i in 0..nb {
+            points.pop();
+        }
+}
+
+fn correct_outliers() {
+
+    /*let mut previous = ordered_points[0];
     let mut average = 0f64;
     let mut prev_avg = average;
     for p in ordered_points.iter() {
@@ -40,31 +59,26 @@ pub fn repair(file: Option<&str>, cardinal_point: Option<&str>, start_point: Opt
         println!("distance from previous: {}; average: {} {} {}", d, average, d.sqrt(), d.sqrt()>prev_avg);
 
         previous = *p;
-    }
-
+    }*/
 }
 
-fn select_startpoint(cardinal_point: Option<&str>, start_point: Option<&str>, points: &Vec<(f64, f64)>) -> usize {
-    match cardinal_point {
-        Some(cardinal_point_str) => {
-            let cardinal_point: CardinalPoint = cardinal_point_str.parse().unwrap();
+fn select_startpoint(cardinal_point: Option<&str>, start_point: Option<&str>, points: &Vec<(f64, f64)>) -> Option<usize> {
 
-            directional_lookup(cardinal_point, points)
-        },
+    if let Some(cardinal_point) = cardinal_point {
 
-        _ => match start_point {
-            Some(point_str) => {
+        let cardinal_point: Result<CardinalPoint, String> = cardinal_point.parse::<CardinalPoint>();
 
-                let coordinates: Vec<&str> = point_str.split(",").collect();
+        Some(directional_lookup(cardinal_point.ok()?, points))
 
-                let point = (coordinates[0].parse().unwrap(), coordinates[1].parse().unwrap());
+    } else if let Some(start_point) = start_point {
 
-                coordinates_lookup(point, points)
-            },
+        let coordinates: Vec<&str> = start_point.split(",").collect();
 
-            _ => { println!("Defaulting to first point as start point!"); 0usize }
-        }
-    }
+        let point = (coordinates[0].parse().ok()?, coordinates[1].parse().ok()?);
+
+        Some(coordinates_lookup(point, points))
+
+    } else { None }
 }
 
 fn dedup_trackpoints(tracks: &Vec<Track>) -> (usize, Vec<(f64, f64)>) {

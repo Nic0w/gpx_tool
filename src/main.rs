@@ -53,7 +53,8 @@ fn main() {
             repair(
                 args.value_of("file"),
                 args.value_of("cardinal-point"),
-                args.value_of("start-point")
+                args.value_of("start-point"),
+                args.value_of("truncate")
             );
         }
         _ => {}

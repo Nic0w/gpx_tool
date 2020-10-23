@@ -152,3 +152,55 @@ pub fn parse_gpx(path: &Path) -> Gpx {
         }
     }
 }
+
+pub fn to_gpx(points: &Vec<(f64, f64)>, path: Option<&Path>, name: Option<&str>, creator: Option<&str>, version: Option<&str>) {
+
+    let name = name.unwrap_or("Some GPX Data");
+    let creator = creator.unwrap_or("gpx_tool");
+    let version = version.unwrap_or("1.1");
+
+    let mut trackpoints: Vec<TrackPoint> = Vec::with_capacity(points.len());
+
+    for point in points.iter() {
+
+        trackpoints.push(TrackPoint {
+            lat: point.0,
+            lon: point.1,
+
+            elevations: vec![]
+        });
+    }
+
+    let gpx_object = Gpx {
+        creator: creator.to_string(),
+        version: version.to_string(),
+
+        metadata: Metadata {
+            name: Name { value: name.to_string() }
+        },
+
+        tracks: vec![Track {
+            name: Name { value: name.to_string() },
+            segments: vec![TrackSegment{
+                points: trackpoints,
+            }]
+        }]
+    };
+
+    let xml_data = XMLElement::from(gpx_object).to_string_pretty("\n", "  ");
+
+    if let Some(path) = path {
+
+        let _res = match File::create(path) {
+
+            Ok(mut file) => file.write_all(xml_data.as_bytes()),
+
+            Err(_reason) => panic!("Failed to open a file for writing."),
+        };
+
+    }
+    else {
+        println!("{}", xml_data);
+    }
+
+}
