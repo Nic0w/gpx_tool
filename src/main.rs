@@ -9,6 +9,7 @@ mod lookup;
 mod gpx;
 mod tsp;
 mod distance;
+mod combine;
 
 use crate::repair::repair;
 
@@ -43,6 +44,12 @@ fn main() {
                 help("File to fix").
                 takes_value(true).
                 required(true))).
+        subcommand(App::new("combine").
+            about("Combine multiple GPX files into one.").
+            arg(Arg::with_name("files").
+                multiple(true).
+                required(true).
+                help("List of files to combine"))).
         get_matches();
 
     println!("Hello, world!");
@@ -56,93 +63,14 @@ fn main() {
                 args.value_of("start-point"),
                 args.value_of("truncate")
             );
-        }
+        },
+        ("combine", Some(args)) => {
+
+            args.val
+
+        },
         _ => {}
     };
 
-    /*//(48.947646f64, 2.153013f64)
-
-
-    let startpoint_index = match args.value_of("cardinal-point") {
-        Some(cardinal_point_str) => {
-            let cardinal_point: CardinalPoint = cardinal_point_str.parse().unwrap();
-
-            directional_lookup(cardinal_point, &final_points)
-        },
-
-        _ => match args.value_of("start-point") {
-            Some(point_str) => {
-
-                let coordinates: Vec<&str> = point_str.split(",").collect();
-
-                let point = (coordinates[0].parse().unwrap(), coordinates[1].parse().unwrap());
-
-                coordinates_lookup(point, &final_points)
-            },
-
-            _ => { println!("Defaulting to first point as start point!"); 0usize }
-        }
-    };
-
-    let start_point = final_points[startpoint_index];
-
-    println!("Starting with ({}, {})", start_point.0, start_point.1);
-
-    let mut ordered = solve_tsp(startpoint_index, final_points);
-
-    println!("We still have {} points after TSP solver.", ordered.len());
-
-    let mut final_ordered: Vec<TrackPoint> = Vec::new();
-
-    println!("{} {}", ordered[ordered.len()-1].0, ordered[ordered.len()-1].1);
-
-    let truncate: usize = match args.value_of("truncate") {
-        Some(n) => n.parse().unwrap(),
-        _       => 0usize
-    };
-
-    for _i in 0..truncate {
-        ordered.pop();
-    }
-
-    for point in ordered.iter() {
-
-        final_ordered.push(TrackPoint {
-            lat: point.0,
-            lon: point.1,
-
-            elevations: vec![]
-        });
-    }
-
-    let cleanedup_gpx = Gpx {
-        creator: "nic0w".to_string(),
-        version: "1.1".to_string(),
-
-        metadata: Metadata {
-            name: Name { value: "Test".to_string() }
-        },
-
-        tracks: vec![Track {
-            name: Name { value: "TestSeg".to_string() },
-            segments: vec![TrackSegment{
-                points: final_ordered.clone()
-            }]
-        }]
-    };
-
-    let cleanedup_xml = XMLElement::from(cleanedup_gpx);
-
-    let output = Path::new("output.gpx");
-
-    let mut out_file = match File::create(output) {
-
-        Ok(file) => file,
-        Err(reason) => panic!("Failed to open a file for writing."),
-
-    };
-
-    out_file.write_all(cleanedup_xml.to_string_pretty("\n", "  ").as_bytes());
-
-    println!("{}", cleanedup_xml.to_string_pretty("\n", "  "));*/
+    //(48.947646f64, 2.153013f64)
 }

@@ -153,23 +153,26 @@ pub fn parse_gpx(path: &Path) -> Gpx {
     }
 }
 
+pub fn point2trackpoint(point: &(f64, f64)) -> TrackPoint {
+
+    TrackPoint {
+        lat: point.0,
+        lon: point.1,
+
+        elevations: vec![]
+    }
+}
+
+pub fn trackpoint2point(trackpoint: &TrackPoint) -> (f64, f64) {
+    
+    (trackpoint.lat, trackpoint.lon)
+}
+
 pub fn to_gpx(points: &Vec<(f64, f64)>, path: Option<&Path>, name: Option<&str>, creator: Option<&str>, version: Option<&str>) {
 
     let name = name.unwrap_or("Some GPX Data");
     let creator = creator.unwrap_or("gpx_tool");
     let version = version.unwrap_or("1.1");
-
-    let mut trackpoints: Vec<TrackPoint> = Vec::with_capacity(points.len());
-
-    for point in points.iter() {
-
-        trackpoints.push(TrackPoint {
-            lat: point.0,
-            lon: point.1,
-
-            elevations: vec![]
-        });
-    }
 
     let gpx_object = Gpx {
         creator: creator.to_string(),
@@ -182,7 +185,7 @@ pub fn to_gpx(points: &Vec<(f64, f64)>, path: Option<&Path>, name: Option<&str>,
         tracks: vec![Track {
             name: Name { value: name.to_string() },
             segments: vec![TrackSegment{
-                points: trackpoints,
+                points: points.iter().map(point2trackpoint).collect(),
             }]
         }]
     };
