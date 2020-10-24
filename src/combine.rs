@@ -8,11 +8,11 @@ pub fn combine(paths: Vec<&str>) {
 
     for path in paths.iter().map(Path::new) {
 
-        let gpx_data = parse_gpx(path);
+        let mut gpx_data = parse_gpx(path);
 
-        for tracks in gpx_data.tracks.iter() {
+        for tracks in gpx_data.tracks.iter_mut() {
 
-            for segments in tracks.segments.iter() {
+            for segments in tracks.segments.iter_mut() {
 
                 all_trackpoints.append(&mut segments.points);
             }

@@ -12,6 +12,7 @@ mod distance;
 mod combine;
 
 use crate::repair::repair;
+use crate::combine::combine;
 
 fn main() {
 
@@ -46,10 +47,14 @@ fn main() {
                 required(true))).
         subcommand(App::new("combine").
             about("Combine multiple GPX files into one.").
-            arg(Arg::with_name("files").
+            arg(Arg::with_name("file").
                 multiple(true).
                 required(true).
-                help("List of files to combine"))).
+                help("List of files to combine")).
+            arg(Arg::with_name("repair").
+                short("r").
+                long("repair").
+                help("Apply the repair algorithm on the combined data"))).
         get_matches();
 
     println!("Hello, world!");
@@ -65,9 +70,7 @@ fn main() {
             );
         },
         ("combine", Some(args)) => {
-
-            args.val
-
+            combine(args.values_of("file").unwrap().collect());
         },
         _ => {}
     };
