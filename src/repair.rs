@@ -1,31 +1,33 @@
 use std::path::Path;
 use std::collections::HashSet;
 
+use log::{info, warn, trace};
+
 use crate::gpx::{Track, TrackPoint, parse_gpx, to_gpx};
 use crate::lookup::{directional_lookup, coordinates_lookup, CardinalPoint};
 use crate::tsp::solve_tsp;
 use crate::distance::distance;
 
-pub fn repair(file: Option<&str>, cardinal_point: Option<&str>, start_point: Option<&str>, truncate: Option<&str>) {
+pub fn repair(file: Option<&str>, output: Option<&str>, cardinal_point: Option<&str>, start_point: Option<&str>, truncate: Option<&str>) {
 
     let path = Path::new(file.unwrap());
 
-    println!("Opening file '{}'", path.display());
+    trace!("Opening file '{}'", path.display());
 
     let gpx_data = parse_gpx(&path);
 
-    println!("File by '{}', version {}", gpx_data.creator, gpx_data.version);
-    println!("Parsed {} tracks !", gpx_data.tracks.len());
+    info!("File by '{}', version {}", gpx_data.creator, gpx_data.version);
+    trace!("Parsed {} tracks !", gpx_data.tracks.len());
 
     let (total_points, unique_points) = dedup_trackpoints(&gpx_data.tracks);
 
-    println!("{} points in total, kept {}.", total_points, unique_points.len());
+    trace!("{} points in total, kept {}.", total_points, unique_points.len());
 
     let startpoint_index = select_startpoint(cardinal_point, start_point, &unique_points).unwrap_or_default();
 
     let start_point = unique_points[startpoint_index];
 
-    println!("Starting with ({}, {})", start_point.0, start_point.1);
+    trace!("Starting with ({}, {})", start_point.0, start_point.1);
 
     let mut ordered_points = solve_tsp(startpoint_index, &unique_points);
 
@@ -36,30 +38,42 @@ pub fn repair(file: Option<&str>, cardinal_point: Option<&str>, start_point: Opt
         };
     }
 
-    to_gpx(&ordered_points, None, None, None, None);
+    to_gpx(
+        &ordered_points,
+        output.map(Path::new),
+        None,
+        None,
+        None);
 }
 
-fn pop_points(points: &mut std::vec::Vec<(f64, f64)>, nb: usize) {
+/*pub fn inner_repair(trackpoints: &Vec<TrackPoint>) -> Vec<(f64, f64)> {
+    vec![]
+}*/
+
+fn pop_points(points: &mut Vec<(f64, f64)>, nb: usize) {
 
     for _i in 0..nb {
             points.pop();
         }
 }
 
-fn correct_outliers() {
+fn correct_outliers(points: &mut Vec<(f64, f64)>) {
 
-    /*let mut previous = ordered_points[0];
-    let mut average = 0f64;
-    let mut prev_avg = average;
-    for p in ordered_points.iter() {
+    let mut previous = points[0];
+    let mut sum: f64 = 0.0;
+
+    for (n, p) in points.iter().enumerate() {
 
         let d = distance(&previous, p);
-        prev_avg = average;
-        average = (d + average)/2.0;
-        println!("distance from previous: {}; average: {} {} {}", d, average, d.sqrt(), d.sqrt()>prev_avg);
+
+        sum +=d;
+
+        let mean = sum / ((n as f64)+1.0);
+
+    //  println!("distance from previous: {}; average: {} {} {}", d, average, d.sqrt(), d.sqrt()>prev_avg);
 
         previous = *p;
-    }*/
+    }
 }
 
 fn select_startpoint(cardinal_point: Option<&str>, start_point: Option<&str>, points: &Vec<(f64, f64)>) -> Option<usize> {

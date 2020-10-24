@@ -2,7 +2,8 @@ extern crate serde;
 extern crate quick_xml;
 extern crate clap;
 
-use clap::{App, Arg};
+use clap::{App, Arg, AppSettings};
+use log::{info, warn, trace};
 
 mod repair;
 mod lookup;
@@ -17,9 +18,19 @@ use crate::combine::combine;
 fn main() {
 
     let app = App::new("GPX Parser").
+        setting(AppSettings::ArgRequiredElseHelp).
         version("1.0").
         author("nic0w").
         about("Fixes or combines (broken) gpx files").
+        arg(Arg::with_name("quiet").
+            short("q").
+            long("quiet").
+            help("Disable messages.")).
+        arg(Arg::with_name("verbosity").
+                short("v").
+                long("verbose").
+                multiple(true).
+                help("Increases verbosity.")).
         subcommand(App::new("repair").
             about("Repair a gpx file").
             arg(Arg::with_name("start-point").
@@ -40,6 +51,12 @@ fn main() {
                 value_name("number").
                 help("Will remove number of points from the end of the repaired track. Can help with outliers.").
                 takes_value(true)).
+            arg(Arg::with_name("output").
+                short("o").
+                long("output").
+                value_name("file").
+                help("Ouput file").
+                takes_value(true)).
             arg(Arg::with_name("file").
                 value_name("./path/to/file.gpx").
                 help("File to fix").
@@ -57,13 +74,22 @@ fn main() {
                 help("Apply the repair algorithm on the combined data"))).
         get_matches();
 
-    println!("Hello, world!");
+    stderrlog::new()
+            .module(module_path!())
+            .quiet(app.is_present("quiet"))
+            .timestamp(stderrlog::Timestamp::Second)
+            .verbosity((app.occurrences_of("verbosity")+1u64) as usize)
+            .init()
+            .unwrap();
+
+    info!("Hello, world!");
 
     match app.subcommand() {
 
         ("repair", Some(args)) => {
             repair(
                 args.value_of("file"),
+                args.value_of("output"),
                 args.value_of("cardinal-point"),
                 args.value_of("start-point"),
                 args.value_of("truncate")

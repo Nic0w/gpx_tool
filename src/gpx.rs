@@ -6,6 +6,8 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::hash::{Hash, Hasher};
 
+use log::{info, warn, trace};
+
 use serde::Deserialize;
 
 use simple_xml_serialize::XMLElement;
@@ -141,7 +143,7 @@ pub fn parse_gpx(path: &Path) -> Gpx {
 
             match gpx_file.read_to_string(&mut content) {
                 Err(reason) => panic!("Failed to read file: {}", reason),
-                Ok(size) => println!("Read {} bytes !", size)
+                Ok(size) => trace!("Read {} bytes !", size)
             };
 
             match quick_xml::de::from_str(&content) {
@@ -164,7 +166,7 @@ pub fn point2trackpoint(point: &(f64, f64)) -> TrackPoint {
 }
 
 pub fn trackpoint2point(trackpoint: &TrackPoint) -> (f64, f64) {
-    
+
     (trackpoint.lat, trackpoint.lon)
 }
 
