@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::gpx::{Track, TrackPoint, parse_gpx, to_gpx, trackpoint2point};
+use crate::gpx::{TrackPoint, parse_gpx, to_gpx, trackpoint2point};
 
 pub fn combine(paths: Vec<&str>) {
 

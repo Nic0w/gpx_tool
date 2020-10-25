@@ -57,7 +57,7 @@ fn pop_points(points: &mut Vec<(f64, f64)>, nb: usize) {
         }
 }
 
-fn correct_outliers(points: &mut Vec<(f64, f64)>) {
+fn _correct_outliers(points: &mut Vec<(f64, f64)>) {
 
     let mut previous = points[0];
     let mut sum: f64 = 0.0;
@@ -68,7 +68,7 @@ fn correct_outliers(points: &mut Vec<(f64, f64)>) {
 
         sum +=d;
 
-        let mean = sum / ((n as f64)+1.0);
+        let _mean = sum / ((n as f64)+1.0);
 
     //  println!("distance from previous: {}; average: {} {} {}", d, average, d.sqrt(), d.sqrt()>prev_avg);
 

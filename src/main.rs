@@ -11,9 +11,11 @@ mod gpx;
 mod tsp;
 mod distance;
 mod combine;
+mod info;
 
 use crate::repair::repair;
 use crate::combine::combine;
+use crate::info::info;
 
 fn main() {
 
@@ -72,6 +74,11 @@ fn main() {
                 short("r").
                 long("repair").
                 help("Apply the repair algorithm on the combined data"))).
+        subcommand(App::new("info").
+            about("Informations on the structure of the file").
+            arg(Arg::with_name("file").
+                required(true).
+                help("file to print infos on."))).
         get_matches();
 
     stderrlog::new()
@@ -97,6 +104,9 @@ fn main() {
         },
         ("combine", Some(args)) => {
             combine(args.values_of("file").unwrap().collect());
+        },
+        ("info", Some(args)) => {
+            info(args.value_of("file"));
         },
         _ => {}
     };
